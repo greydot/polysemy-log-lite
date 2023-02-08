@@ -27,6 +27,12 @@ runLogStdout, runLogStderr :: Member (Embed IO) r => Priority -> Sem (Logger ': 
 runLogStdout prio = runLogHandle stdout formatMsg (filterPriority prio)
 runLogStderr prio = runLogHandle stderr formatMsg (filterPriority prio)
 
+-- | Log messages to 'stdout' or 'stderr'. Format them into JSON objects.
+runLogJSONStdout, runLogJSONStderr :: Member (Embed IO) r => Priority -> Sem (Logger ': r) a -> Sem r a
+runLogJSONStdout prio = runLogHandle stdout formatJSON (filterPriority prio)
+runLogJSONStderr prio = runLogHandle stderr formatJSON (filterPriority prio)
+
+
 filterPriority :: Priority -> Message -> Bool
 filterPriority p msg = priority msg >= p
 
@@ -34,3 +40,15 @@ formatMsg :: Message -> Text
 formatMsg (Message p msg) = mconcat [ "[", Text.toLower (Text.pack $ show p), "] "
                                     , msg
                                     ]
+
+formatJSON :: Message -> Text
+formatJSON (Message p msg) = mconcat [ "{ \"priority\": \"" <> Text.toLower (Text.pack $ show p) <> "\", "
+                                     ,   "\"message\": \"" <> escape msg <> "\" }"
+                                     ]
+  where escape = Text.concatMap f
+        f '"' = "\\\""
+        f '\\' = "\\\\"
+        f '\n' = "\\n"
+        f '\r' = "\\r"
+        f '\t' = "\\t"
+        f c = Text.singleton c
