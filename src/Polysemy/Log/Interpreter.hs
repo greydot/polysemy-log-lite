@@ -13,13 +13,13 @@ import qualified Data.Text.IO as Text
 import Polysemy
 import Polysemy.Log.Effect
 import Polysemy.Log.Types
-import System.IO (Handle, stdout, stderr)
+import System.IO (Handle, hFlush, stdout, stderr)
 
 -- | Bare logging interpreter. Requires file handle, message formattng function, and a minimum priority to filter on.
 runLogHandle :: Member (Embed IO) r => Handle -> (Message -> Text) -> (Message -> Bool) -> Sem (Logger ': r) a -> Sem r a
 runLogHandle h fmt filt = interpret f
   where f :: Member (Embed IO) r => Logger m a -> Sem r a
-        f (LogMessage msg) | filt msg = embed (Text.hPutStrLn h (fmt msg))
+        f (LogMessage msg) | filt msg = embed (Text.hPutStrLn h (fmt msg) >> hFlush h)
                            | otherwise = pure ()
 
 -- | Log messages to 'stdout' or 'stderr'.
